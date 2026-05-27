@@ -70,10 +70,8 @@ jobs:
       - name: Patch build.gradle — AdMob SDK
         run: |
           GRADLE="android/app/build.gradle"
-          # Add Google Play Services Ads dependency
-          sed -i 's|dependencies {|dependencies {\n    implementation "com.google.android.gms:play-services-ads:23.0.0"|' "$GRADLE"
+          sed -i 's|dependencies {|dependencies {\n    implementation "com.google.android.gms:play-services-ads:23.0.0"\n    implementation "com.capacitorjs.plugins:admob:6.0.0"|' "$GRADLE"
           echo "✅ build.gradle patched"
-          grep "play-services-ads" "$GRADLE"
 
       # ── 11. Make gradlew executable ───────────────────────
       - name: Make gradlew executable
