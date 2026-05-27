@@ -1,0 +1,15 @@
+{
+  "appId": "com.nasstec.ocr",
+  "appName": "Nass Tec",
+  "webDir": "www",
+  "plugins": {
+    "AdMob": {
+      "appId": "ca-app-pub-4635937482306738~8666836387"
+    }
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  }
+}
