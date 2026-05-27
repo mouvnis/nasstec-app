@@ -1,94 +1,63 @@
-
-name: Build Nass Tec APK
+name: Build Android APK
 
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:  # allows manual trigger from GitHub website
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    
     steps:
-      # ── 1. Checkout the repo ──────────────────────────────
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: ⬇️ Checkout code
+      uses: actions/checkout@v4
 
-      # ── 2. Setup Java 17 (required by Android Gradle) ────
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
+    - name: ☕ Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
 
-      # ── 3. Setup Node.js ─────────────────────────────────
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+    - name: 🟢 Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
 
-      # ── 4. Install npm dependencies ───────────────────────
-      - name: Install dependencies
-        run: npm install
+    - name: 📦 Install dependencies
+      run: npm install
 
-      # ── 5. Add Android platform via Capacitor ────────────
-      - name: Add Android platform
-        run: npx cap add android
+    - name: 🔧 Install Capacitor CLI
+      run: npm install -g @capacitor/cli
 
-      # ── 6. Sync web assets into Android project ───────────
-      - name: Sync Capacitor
-        run: npx cap sync android
+    - name: 🤖 Add Android platform (if not present)
+      run: |
+        if [ ! -d "android" ]; then
+          npx cap add android
+        fi
 
-      # ── 7. Patch AndroidManifest.xml — add AdMob App ID ──
-      - name: Patch AndroidManifest — AdMob App ID
-        run: |
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-          # Insert AdMob App ID meta-data before </application>
-          sed -i 's|</application>|    <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-4635937482306738~8666836387"/>\n    </application>|' "$MANIFEST"
-          echo "✅ AndroidManifest patched"
-          cat "$MANIFEST"
+    - name: 🔄 Sync Capacitor
+      run: npx cap sync android
 
-      # ── 8. Patch AndroidManifest — add Camera permission ──
-      - name: Patch AndroidManifest — permissions
-        run: |
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-          # Add CAMERA permission if not already present
-          if ! grep -q "android.permission.CAMERA" "$MANIFEST"; then
-            sed -i 's|<application|<uses-permission android:name="android.permission.CAMERA"/>\n    <application|' "$MANIFEST"
-            echo "✅ Camera permission added"
-          fi
+    - name: 🛠️ Make gradlew executable
+      run: chmod +x android/gradlew
 
-      # ── 9. Patch MainActivity.java — register AdMob plugin ─
-      - name: Patch MainActivity.java
-        run: |
-          MAIN_ACTIVITY="android/app/src/main/java/com/nasstec/ocr/MainActivity.java"
-          cp android-patch/MainActivity.java "$MAIN_ACTIVITY"
-          echo "✅ MainActivity.java patched"
+    - name: 🏗️ Build Debug APK
+      run: |
+        cd android
+        ./gradlew assembleDebug --no-daemon
 
-      # ── 10. Patch build.gradle — add AdMob dependency ────
-      - name: Patch build.gradle — AdMob SDK
-        run: |
-          GRADLE="android/app/build.gradle"
-          sed -i 's|dependencies {|dependencies {\n    implementation "com.google.android.gms:play-services-ads:23.0.0"|' "$GRADLE"
-          echo "✅ build.gradle patched"
+    - name: 📤 Upload APK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: nasstec-debug-apk
+        path: android/app/build/outputs/apk/debug/app-debug.apk
+        retention-days: 30
 
-      # ── 11. Make gradlew executable ───────────────────────
-      - name: Make gradlew executable
-        run: chmod +x android/gradlew
-
-      # ── 12. Build the debug APK ───────────────────────────
-      - name: Build Debug APK
-        run: |
-          cd android
-          ./gradlew assembleDebug --no-daemon --stacktrace
-        env:
-          JAVA_HOME: ${{ env.JAVA_HOME }}
-
-      # ── 13. Upload APK as downloadable artifact ───────────
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: NassTec-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 30
+    - name: 📋 APK Build Info
+      run: |
+        echo "✅ APK built successfully!"
+        ls -lh android/app/build/outputs/apk/debug/
